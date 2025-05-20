@@ -2,6 +2,7 @@
 
 import pytest
 from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from neurograph.semgraph.query.path import PathFinder
 
@@ -39,13 +40,13 @@ class TestPathFinder:
         
         def get_edge_weight(source, target, edge_type=None):
             weights = {
-                ("A", "B"): 1.0,
-                ("B", "C"): 2.0,
-                ("A", "D"): 1.5,
-                ("D", "E"): 1.0,
-                ("C", "E"): 1.0
+                ("A", "B", "edge1"): 1.0,
+                ("B", "C", "edge2"): 2.0,
+                ("A", "D", "edge3"): 1.5,
+                ("D", "E", "edge4"): 1.0,
+                ("C", "E", "edge5"): 1.0
             }
-            return weights.get((source, target), 1.0)
+            return weights.get((source, target, edge_type), 1.0)
         
         # Настраиваем методы мока
         self.graph.has_node.side_effect = has_node
@@ -102,6 +103,26 @@ class TestPathFinder:
     
     def test_find_weighted_shortest_path(self):
         """Проверка поиска кратчайшего пути с учетом весов."""
+        # Обновляем мок get_edge_weight для учета edge_type
+        def get_edge_weight(source, target, edge_type=None):
+            weights = {
+                ("A", "B", "edge1"): 1.0,
+                ("B", "C", "edge2"): 2.0,
+                ("A", "D", "edge3"): 1.5,
+                ("D", "E", "edge4"): 1.0,
+                ("C", "E", "edge5"): 1.0
+            }
+            return weights.get((source, target, edge_type), 1.0)
+        
+        # Обновляем мок
+        self.graph.get_edge_weight.side_effect = get_edge_weight
+        
+        # Нужно также добавить метод get_all_nodes, если его нет в моке
+        if not hasattr(self.graph, 'get_all_nodes') or self.graph.get_all_nodes.side_effect is None:
+            def get_all_nodes():
+                return ["A", "B", "C", "D", "E"]
+            self.graph.get_all_nodes.side_effect = get_all_nodes
+        
         # Поиск пути от A до E
         path = self.path_finder.find_weighted_shortest_path("A", "E")
         
@@ -111,7 +132,13 @@ class TestPathFinder:
         
         # Проверяем, что найден правильный путь
         assert len(path) == 2
-        assert path[0][0] == "A"
-        assert path[0][1] == "D"
-        assert path[1][0] == "D"
-        assert path[1][1] == "E"
+        
+        # Проверяем первое ребро пути
+        assert path[0][0] == "A"  # исходный узел
+        assert path[0][1] == "D"  # целевой узел
+        assert path[0][2] == "edge3"  # тип ребра
+        
+        # Проверяем второе ребро пути
+        assert path[1][0] == "D"  # исходный узел
+        assert path[1][1] == "E"  # целевой узел
+        assert path[1][2] == "edge4"  # тип ребра
