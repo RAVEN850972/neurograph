@@ -37,6 +37,25 @@ class JSONSerializer:
     """Сериализатор для формата JSON."""
     
     @staticmethod
+    def _prepare_for_json(obj: Any) -> Any:
+        """Подготавливает объект для сериализации в JSON.
+        
+        Args:
+            obj: Объект для подготовки.
+            
+        Returns:
+            Подготовленный объект.
+        """
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, dict):
+            return {k: JSONSerializer._prepare_for_json(v) for k, v in obj.items()}
+        elif isinstance(obj, list) or isinstance(obj, tuple):
+            return [JSONSerializer._prepare_for_json(i) for i in obj]
+        else:
+            return obj
+    
+    @staticmethod
     def serialize(obj: Any) -> str:
         """Сериализует объект в строку JSON.
         
@@ -46,9 +65,8 @@ class JSONSerializer:
         Returns:
             Строка JSON.
         """
-        if isinstance(obj, np.ndarray):
-            obj = obj.tolist()
-        return json.dumps(obj, ensure_ascii=False, indent=2)
+        prepared_obj = JSONSerializer._prepare_for_json(obj)
+        return json.dumps(prepared_obj, ensure_ascii=False, indent=2)
     
     @staticmethod
     def deserialize(data: str) -> Any:
