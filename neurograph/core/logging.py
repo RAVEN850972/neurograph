@@ -10,11 +10,18 @@ from loguru import logger
 # Базовая настройка логгера
 logger.remove()  # Удаляем стандартный обработчик
 
+# Глобальные переменные для сохранения настроек логирования
+_current_format = None
+_current_log_file = None
+_current_rotation = None
+_current_retention = None
+
 
 class Logger:
     """Класс для настройки и управления логированием."""
     
-    DEFAULT_FORMAT = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
+    # Формат включает поле с именем логгера из контекста
+    DEFAULT_FORMAT = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{extra[name]}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
     
     @staticmethod
     def setup(level: str = "INFO", 
@@ -31,10 +38,21 @@ class Logger:
             rotation: Настройка ротации файлов логов.
             retention: Настройка хранения файлов логов.
         """
+        # Сохраняем настройки для возможного вызова set_level
+        global _current_format, _current_log_file, _current_rotation, _current_retention
+        _current_format = format_string or Logger.DEFAULT_FORMAT
+        _current_log_file = log_file
+        _current_rotation = rotation
+        _current_retention = retention
+        
+        # Удаляем существующие обработчики
+        for handler_id in list(logger._core.handlers.keys()):
+            logger.remove(handler_id)
+        
         # Добавляем обработчик для консоли
         logger.add(
             sys.stderr, 
-            format=format_string or Logger.DEFAULT_FORMAT, 
+            format=_current_format, 
             level=level.upper(),
             colorize=True
         )
@@ -43,7 +61,7 @@ class Logger:
         if log_file:
             logger.add(
                 log_file,
-                format=format_string or Logger.DEFAULT_FORMAT,
+                format=_current_format,
                 level=level.upper(),
                 rotation=rotation,
                 retention=retention,
@@ -61,7 +79,9 @@ class Logger:
         Returns:
             Настроенный логгер.
         """
-        return logger.bind(name=name, **context)
+        # Добавляем имя логгера в контекст
+        context["name"] = name
+        return logger.bind(**context)
     
     @staticmethod
     def set_level(level: str) -> None:
@@ -70,8 +90,14 @@ class Logger:
         Args:
             level: Уровень логирования (DEBUG, INFO, WARNING, ERROR, CRITICAL).
         """
-        for handler_id in logger._core.handlers:
-            logger.level(handler_id, level.upper())
+        # Просто пересоздаем логгеры с новым уровнем
+        Logger.setup(
+            level=level,
+            format_string=_current_format,
+            log_file=_current_log_file,
+            rotation=_current_rotation,
+            retention=_current_retention
+        )
 
 
 # Экспортируем глобальный логгер
