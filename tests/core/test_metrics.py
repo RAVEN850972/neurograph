@@ -50,16 +50,17 @@ class TestMetricsCollector:
     
     def test_record_time(self):
         """Проверка записи времени выполнения."""
-        collector = MetricsCollector()
-        
         # Запись времени
-        collector.record_time("test_operation", 0.1)
-        collector.record_time("test_operation", 0.2)
-        collector.record_time("test_operation", 0.3)
+        self.collector.record_time("test_operation", 0.1)
+        self.collector.record_time("test_operation", 0.2)
+        self.collector.record_time("test_operation", 0.3)
         
         # Получение среднего времени
-        avg_time = collector.get_average_time("test_operation")
-        assert avg_time == 0.2
+        avg_time = self.collector.get_average_time("test_operation")
+        assert avg_time is not None
+        
+        # Используем приблизительное сравнение
+        assert pytest.approx(avg_time) == 0.2
         
         # Сброс таймеров
         collector.reset_timers("test_operation")
