@@ -35,8 +35,8 @@ class PersistentSemGraph(ISemGraph):
         # Блокировка для потокобезопасности
         self._lock = threading.RLock()
         
-        # Загружаем граф из файла, если он существует
-        if os.path.exists(file_path):
+        # Загружаем граф из файла, если он существует и не пустой
+        if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
             try:
                 self._load()
             except Exception as e:
@@ -93,6 +93,11 @@ class PersistentSemGraph(ISemGraph):
         """Загружает граф из файла."""
         with self._lock:
             try:
+                # Проверяем, что файл не пустой
+                if os.path.getsize(self.file_path) == 0:
+                    logger.warning(f"Файл {self.file_path} пустой, создаем новый граф")
+                    return
+                
                 self.graph = MemoryEfficientSemGraph.load(self.file_path)
                 logger.info(f"Граф успешно загружен из файла {self.file_path}: {len(self.graph.get_all_nodes())} узлов, {len(self.graph.get_all_edges())} ребер")
             except Exception as e:
@@ -183,7 +188,12 @@ class PersistentSemGraph(ISemGraph):
     def reload(self) -> None:
         """Перезагружает граф из файла, отбрасывая все несохраненные изменения."""
         with self._lock:
-            self._load()
+            if os.path.exists(self.file_path) and os.path.getsize(self.file_path) > 0:
+                self._load()
+            else:
+                # Если файла нет или он пустой, создаем новый граф
+                self.graph = MemoryEfficientSemGraph()
+                logger.info("Создан новый граф, так как файл отсутствует или пустой")
             self._modified = False
     
     def close(self) -> None:
