@@ -425,15 +425,16 @@ class TestErrorHandling:
     
     def test_none_text_input(self):
         """Тест обработки None как входного текста."""
-        with pytest.raises((TypeError, AttributeError)):
+        # Теперь quick_process должен корректно обрабатывать None и выбрасывать TypeError
+        with pytest.raises(TypeError, match="Текст не может быть None"):
             quick_process(None)
     
     def test_non_string_input(self):
         """Тест обработки не-строкового входа."""
-        with pytest.raises((TypeError, AttributeError)):
+        with pytest.raises(TypeError, match="Ожидается строка"):
             quick_process(123)
         
-        with pytest.raises((TypeError, AttributeError)):
+        with pytest.raises(TypeError, match="Ожидается строка"):
             quick_process(['list', 'input'])
     
     def test_malformed_config(self):
@@ -447,7 +448,7 @@ class TestErrorHandling:
     
     def test_processor_with_invalid_parameters(self):
         """Тест создания процессора с невалидными параметрами."""
-        # Большинство процессоров должны обрабатывать неожиданные параметры
+        # Теперь процессоры должны принимать дополнительные параметры через **kwargs
         processor = NLPFactory.create("standard", invalid_param="test")
         assert processor is not None
     
@@ -456,6 +457,7 @@ class TestErrorHandling:
         # Должен обработать gracefully
         response = quick_generate_response("Тест", None)
         assert isinstance(response, str)
+        assert len(response) > 0
 
 
 class TestIntegration:
